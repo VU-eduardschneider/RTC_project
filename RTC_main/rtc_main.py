@@ -48,7 +48,7 @@ app.layout = dbc.Container(
                         [  # Main content area
                             html.H2("Main content"),
                             html.Hr(),
-                            html.Div(id="output", children=[]),
+                            html.Div(id="main_content", children=[]),
                         ],
                         style={"padding": "20px"},
                     ),
@@ -56,7 +56,9 @@ app.layout = dbc.Container(
                 ),
             ]
         ),
-    	dcc.Interval(id="data_interval", interval=1000, disabled=True, )
+    	dcc.Interval(id="data_interval", interval=1000, disabled=True), # Interval object which triggers data update
+    	dcc.Store(id="data_store", storage_type="memory"), # Stores newest row of DataFrame, triggers updating graphs
+    	dcc.Store(id="data_longterm_store", storage_type="memory") # Full DataFrame storage for if user wants to save their data
     ],
     fluid=True,
 )
@@ -101,22 +103,46 @@ def update_input_fields(connector_type):
 
 # Callback to retrieve data and upate the main content
 @app.callback(
-    Output(component_id="output", component_property="children"),
+    Output(component_id="main_content", component_property="children"),
+    Output(component_id="data_interval", component_property="disabled"),  # MOVE THIS TO CONFIRM SCREEN WHEN CONFIRM IS DONE
     Input(component_id="connector-button", component_property="n_clicks"),
     State(component_id="connector-dropdown", component_property="value"),
-    State({"index": ALL, "type": "connection_input"}, "id"),
-    State({"index": ALL, "type": "connection_input"}, "value"),
-    prevent_initial_call=True,
+    State({"type": "connection_input", "index": ALL}, "id"),
+    State({"type": "connection_input", "index": ALL}, "value"),
+    prevent_initial_call=True
 )
-def retrieve_data(n_clicks, connector_type, custom_id, connection_input):
+
+def retrieve_data_temp(n_clicks, connector_type, custom_id, connection_input):
     connection = ''
     if n_clicks > 0:
         if connector_type:
             print(f'{connector_type.split("_")[0]} success!')
         connection_data = {custom_id[x]['index']: str(connection_input[x]) for x in range(len(connection_input))}
         connection = f'{connector_type.split("_")[0]} - {connection_data}'
-    return connection
+    return connection, False
 
+# Callback to retrieve and store data each time the interval passes
+@app.callback(
+	Output(component_id="data_store", component_property="data"),
+	Output(component_id="data_longterm_store", component_property="data"),
+	Input(component_id="data_interval", component_property='n_intervals'),
+	State({"type": "connection_input", "index": ALL}, "id"),
+	State({"type:": "connection_input", "index": ALL}, "value"),
+	prevent_initial_call=True
+)
+
+def retrieve_data(interval, connector_id, value):
+	if connector_id[0]['index'] == None:
+		print('Something is going wrong!')
+		return [0], [0]
+
+	elif connector_id[0]['index'] == "IP_input":
+		print("IP")
+		return [1], [1]
+
+	elif connector_id[0]['index'] == "TCP1_input":
+		print("TCP")
+		return [2], [2]
 
 # Run app
 if __name__ == "__main__":
