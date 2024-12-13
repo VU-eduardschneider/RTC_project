@@ -302,42 +302,6 @@ def update_data(data_store, graph_id, graph_configs):
     else:
         return dash.no_update
 
-# # Callback to extend data to each graph that exists
-# @app.callback(
-#     Output({'type': 'dynamic_graph', 'index': MATCH}, 'extendData'),
-#     Input('data_store', 'data'),
-#     State({'type': 'dynamic_graph', 'index': MATCH}, 'id'),
-#     State('graph_configs_store', 'data'),
-#     prevent_initial_call=True
-# )
-
-# def update_data(data_store, graph_id, graph_configs):
-
-#     # Extract the index from the graph_id
-#     index = graph_id['index']
-
-#     # Retrieve the configuration for the current graph
-#     config = graph_configs.get(str(index), None)
-
-#     if config:
-#         x_var, y_var = config
-#         x_data = data_store.get(x_var, [])
-#         y_data = data_store.get(y_var, [])
-
-#         print(graph_id, ':', x_data, y_data)
-
-
-#         # Prepare the data to extend
-#         extend_data = {
-#             'x': [[x_data]],
-#             'y': [[y_data]]
-#         }
-
-#         return extend_data
-#     else:
-#         return dash.no_update
-
-
 # Run app
 if __name__ == '__main__':
     app.run_server(debug=True)
