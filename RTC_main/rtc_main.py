@@ -18,6 +18,7 @@ app.layout = dbc.Container(
         dcc.Store(id='data_store', storage_type='memory'), # Stores newest row of DataFrame, triggers updating graphs
         dcc.Store(id='data_longterm_store', storage_type='memory'), # Full DataFrame storage for if user wants to save their data
         dcc.Store(id= 'graph_configs_store', data={}), # Stores the configuration of each graph
+        dcc.Store(id= 'connection_config', data=[]), # Stores data about the connection, like IP address or port
     
         dbc.Row(
             [
@@ -31,6 +32,7 @@ app.layout = dbc.Container(
                                 options=[
                                     {'label': 'IP', 'value': 'IP_connector'},
                                     {'label': 'TCP', 'value': 'TCP_connector'},
+                                    {'label': 'dummy connector', 'value': 'dummy_connector'}
                                 ],
                                 value='IP_connector',
                             ),  # Default option on launch
@@ -99,6 +101,17 @@ def update_input_fields(connector_type):
                 ),
             ]
         )
+
+    elif connector_type == 'dummy_connector':
+        return html.Div(
+            [
+                dcc.Input(
+                    id={'index': 'dummy_input', 'type': 'connection_input'},
+                    type= 'text',
+                    placeholder= 'Enter random text/numbers'
+                )
+            ]
+            )
     else:
         return html.Div()
 
@@ -109,6 +122,7 @@ def update_input_fields(connector_type):
 @app.callback(
     Output(component_id='main_content', component_property='children'),
     Output(component_id='data_interval', component_property='disabled'),
+    Output(component_id='connection_config', component_property='data'),
     Input(component_id='connector-button', component_property='n_clicks'),
     State(component_id='connector-dropdown', component_property='value'),
     State({'type': 'connection_input', 'index': ALL}, 'id'),
@@ -117,13 +131,13 @@ def update_input_fields(connector_type):
     prevent_initial_call=True
 )
 
-def retrieve_data_temp(n_clicks, connector_type, custom_id, connection_input, stored_data):
+def retrieve_data_temp(n_clicks, connector_type, connection_id, connection_input, stored_data):
     connection = ''
+    print(connection_input)
     if n_clicks > 1:
         if connector_type:
-            print(f'{connector_type.split("_")[0]} success!')
-        connection_data = {custom_id[x]['index']: str(connection_input[x]) for x in range(len(connection_input))}
-        connection = f'{connector_type.split("_")[0]} - {connection_data}'
+            connection_data = {connection_id[x]['index']: str(connection_input[x]) for x in range(len(connection_input))}
+            connection = f'{connector_type.split("_")[0]} - {connection_data}'
 
         # Extract column names from stored data
         if stored_data:
@@ -153,12 +167,11 @@ def retrieve_data_temp(n_clicks, connector_type, custom_id, connection_input, st
                     value='line'
                 ),
                 html.Button('Add graph', id='add_graph_button', n_clicks=0),
-                connection,
                 html.Hr(),
                 html.Div(id="graph_content_area", children=[])
             ])
-        ]), False
-    return dash.no_update, False
+        ]), False, connection_input
+    return dash.no_update, False, connection_input
 
 # Callback to retrieve and store data each time the interval passes
 # When the interval is triggered, store new data into the short 'data_store'
@@ -169,13 +182,14 @@ def retrieve_data_temp(n_clicks, connector_type, custom_id, connection_input, st
     Output(component_id='connector-button', component_property='n_clicks'),
     Input(component_id='data_interval', component_property='n_intervals'),
     State({'type': 'connection_input', 'index': ALL}, 'id'),
-    State({'type:': 'connection_input', 'index': ALL}, 'value'),
+    State(component_id= 'connection_config', component_property='data'),
     State(component_id='connector-button', component_property='n_clicks'),
     prevent_initial_call=True
 )
 
-def retrieve_data(interval, connector_id, value, n_clicks):
+def retrieve_data(interval, connector_id, connection_config, n_clicks):
     # Test variables for now
+    print(connection_config)
     if n_clicks == 1:
         n_clicks += 1
 
@@ -187,11 +201,15 @@ def retrieve_data(interval, connector_id, value, n_clicks):
         return [0], [0], n_clicks
 
     elif connector_id[0]['index'] == 'IP_input':
-        values = confunc.dummy_connect_dict(value)
+        values = confunc.dummy_connect_dict(connection_config)
         return values, values, n_clicks
 
     elif connector_id[0]['index'] == 'TCP1_input':
-        values = confunc.dummy_connect_dict(value)
+        values = confunc.dummy_connect_dict(connection_config)
+        return values, values, n_clicks
+
+    elif connector_id[0]['index'] == 'dummy_input':
+        values = confunc.dummy_connect_dict(connection_config)
         return values, values, n_clicks
 
 
@@ -235,7 +253,6 @@ def add_delete_graph(n_clicks, _, x, y, graph_type, div_children, data, graph_co
         new_child = html.Div(id= {'type': 'dynamic_graph_div', 'index': n_clicks},
         children=[
             graph,
-            html.P('Graph context:'), x, y, graph_type, n_clicks,
             html.Button('Delete graph', id={'type': 'dynamic_delete_button', 'index': n_clicks}),
             html.Hr()
         ])
