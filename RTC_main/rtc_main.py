@@ -5,7 +5,7 @@ import plotly.express as px
 import connection_functions as confunc
 
 # Initialize Dash app
-app = dash.Dash(
+app = Dash(
     __name__,
     external_stylesheets=[dbc.themes.BOOTSTRAP],
     suppress_callback_exceptions=True,
@@ -178,6 +178,7 @@ def retrieve_data(interval, connector_id, value, n_clicks):
     # Test variables for now
     if n_clicks == 1:
         n_clicks += 1
+
     else:
         n_clicks = dash.no_update
 
@@ -251,14 +252,16 @@ def add_delete_graph(n_clicks, _, x, y, graph_type, div_children, data, graph_co
 
     return div_children, graph_config
 
+
 # Callback to extend data to each graph that exists
 @app.callback(
-    Output({'type': 'dynamic_graph', 'index': MATCH}, 'extendData'),
-    Input('data_store', 'data'),
+    Output({'type': 'dynamic_graph', 'index': MATCH}, 'figure'),
+    Input(component_id= 'data_store', component_property= 'data'),
     State({'type': 'dynamic_graph', 'index': MATCH}, 'id'),
-    State('graph_configs_store', 'data'),
+    State(component_id= 'graph_configs_store', component_property= 'data'),
     prevent_initial_call=True
 )
+
 def update_data(data_store, graph_id, graph_configs):
 
     # Extract the index from the graph_id
@@ -272,15 +275,50 @@ def update_data(data_store, graph_id, graph_configs):
         x_data = data_store.get(x_var, [])
         y_data = data_store.get(y_var, [])
 
-        # Prepare the data to extend
-        extend_data = {
-            'x': [[x_data]],
-            'y': [[y_data]]
-        }
+        patched_figure = Patch()
 
-        return extend_data
+        patched_figure["data"][0]["x"].append(x_data)
+        patched_figure["data"][0]["y"].append(y_data)
+        
+        return patched_figure
+
     else:
         return dash.no_update
+
+# # Callback to extend data to each graph that exists
+# @app.callback(
+#     Output({'type': 'dynamic_graph', 'index': MATCH}, 'extendData'),
+#     Input('data_store', 'data'),
+#     State({'type': 'dynamic_graph', 'index': MATCH}, 'id'),
+#     State('graph_configs_store', 'data'),
+#     prevent_initial_call=True
+# )
+
+# def update_data(data_store, graph_id, graph_configs):
+
+#     # Extract the index from the graph_id
+#     index = graph_id['index']
+
+#     # Retrieve the configuration for the current graph
+#     config = graph_configs.get(str(index), None)
+
+#     if config:
+#         x_var, y_var = config
+#         x_data = data_store.get(x_var, [])
+#         y_data = data_store.get(y_var, [])
+
+#         print(graph_id, ':', x_data, y_data)
+
+
+#         # Prepare the data to extend
+#         extend_data = {
+#             'x': [[x_data]],
+#             'y': [[y_data]]
+#         }
+
+#         return extend_data
+#     else:
+#         return dash.no_update
 
 
 # Run app
