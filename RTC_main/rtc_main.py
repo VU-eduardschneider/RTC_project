@@ -190,67 +190,6 @@ def update_input_fields(connector_type):
 #         ]), False, connection_input
 #     return dash.no_update, False, connection_input
 
-@app.callback(
-    Output(component_id='main_content', component_property='children'),
-    Output(component_id='data_interval', component_property='disabled'),
-    Output(component_id='connection_config', component_property='data'),
-    Input(component_id='connector-button', component_property='n_clicks'),
-    State(component_id='connector-dropdown', component_property='value'),
-    State({'type': 'connection_input', 'index': ALL}, 'id'),
-    State({'type': 'connection_input', 'index': ALL}, 'value'),
-    State(component_id='data_store', component_property='data'),
-    prevent_initial_call=True
-)
-def retrieve_data_temp(n_clicks, connector_type, connection_id, connection_input, stored_data):
-    if n_clicks > 1:
-        # Create connection string/config from inputs
-        connection_data = {connection_id[x]['index']: str(connection_input[x]) 
-                         for x in range(len(connection_input))}
-        
-        # Try to get initial data to verify connection works
-        try:
-            initial_data = confunc.get_data_from_connector(connector_type, connection_input)
-            
-            # Get column names from initial data
-            columns = list(initial_data.keys()) if initial_data else []
-            
-            return html.Div([
-                html.Div([
-                    dcc.Dropdown(
-                        id='dropdown_X',
-                        options=[{'label': col, 'value': col} for col in columns],
-                        value=columns[0] if columns else None
-                    ),
-                    dcc.Dropdown(
-                        id='dropdown_Y',
-                        options=[{'label': col, 'value': col} for col in columns],
-                        value=columns[0] if columns else None
-                    ),
-                    dcc.Dropdown(
-                        id='dropdown_graph_type',
-                        options=[
-                            {'label': 'Line plot', 'value': 'line'},
-                            {'label': 'Bar chart', 'value': 'bar'},
-                            {'label': 'Scatter plot', 'value': 'scatter'}
-                        ],
-                        value='line'
-                    ),
-                    html.Button('Add graph', id='add_graph_button', n_clicks=0),
-                    html.Hr(),
-                    html.Div(id="graph_content_area", children=[])
-                ])
-            ]), False, connection_input
-            
-        except Exception as e:
-            # If connection fails, show error message
-            return html.Div([
-                html.Div(f"Error connecting to {connector_type}: {str(e)}"),
-                html.Hr()
-            ]), True, connection_input
-            
-    return dash.no_update, False, connection_input
-
-
 # # Callback to retrieve and store data each time the interval passes
 # # When the interval is triggered, store new data into the short 'data_store'
 # # And store entire dataset in 'dataLlongterm_store'
@@ -291,30 +230,91 @@ def retrieve_data_temp(n_clicks, connector_type, connection_id, connection_input
 #         values = confunc.dummy_connect_dict(connection_config)
 #         return values, values, n_clicks
 
+# First, modify the connector-button callback to only handle UI state
+@app.callback(
+    Output(component_id='main_content', component_property='children'),
+    Output(component_id='data_interval', component_property='disabled'),
+    Output(component_id='connection_config', component_property='data'),
+    Input(component_id='connector-button', component_property='n_clicks'),
+    State(component_id='connector-dropdown', component_property='value'),
+    State({'type': 'connection_input', 'index': ALL}, 'id'),
+    State({'type': 'connection_input', 'index': ALL}, 'value'),
+    prevent_initial_call=True
+)
+def setup_interface(n_clicks, connector_type, connection_id, connection_input):
+    if n_clicks > 0:
+        return html.Div([
+            html.Div([
+                # These dropdowns will be populated by the retrieve_data callback
+                dcc.Dropdown(id='dropdown_X', options=[], value=None),
+                dcc.Dropdown(id='dropdown_Y', options=[], value=None),
+                dcc.Dropdown(
+                    id='dropdown_graph_type',
+                    options=[
+                        {'label': 'Line plot', 'value': 'line'},
+                        {'label': 'Bar chart', 'value': 'bar'},
+                        {'label': 'Scatter plot', 'value': 'scatter'}
+                    ],
+                    value='line'
+                ),
+                html.Button('Add graph', id='add_graph_button', n_clicks=0),
+                html.Hr(),
+                html.Div(id="graph_content_area", children=[])
+            ])
+        ]), False, connection_input
+    return dash.no_update, True, []
+
+# Combined retrieve_data callback that handles both initial setup and updates
 @app.callback(
     Output(component_id='data_store', component_property='data'),
     Output(component_id='data_longterm_store', component_property='data'),
-    Output(component_id='connector-button', component_property='n_clicks'),
+    Output(component_id='dropdown_X', component_property='options'),
+    Output(component_id='dropdown_Y', component_property='options'),
+    Output(component_id='dropdown_X', component_property='value'),
+    Output(component_id='dropdown_Y', component_property='value'),
     Input(component_id='data_interval', component_property='n_intervals'),
     State({'type': 'connection_input', 'index': ALL}, 'id'),
     State(component_id='connection_config', component_property='data'),
-    State(component_id='connector-button', component_property='n_clicks'),
-    State(component_id='connector-dropdown', component_property='value'),  # Add this line
+    State(component_id='connector-dropdown', component_property='value'),
+    State(component_id='data_longterm_store', component_property='data'),
+    State(component_id='dropdown_X', component_property='value'),
+    State(component_id='dropdown_Y', component_property='value'),
     prevent_initial_call=True
 )
-def retrieve_data(interval, connector_id, connection_config, n_clicks, connector_type):
-    if n_clicks == 1:
-        n_clicks += 1
-    else:
-        n_clicks = dash.no_update
-
+def retrieve_data(interval, connector_id, connection_config, connector_type, longterm_data, current_x, current_y):
     try:
-        # Use the dictionary-based approach
+        # Get new data point
         values = confunc.get_data_from_connector(connector_type, connection_config)
-        return values, values, n_clicks
+        
+        # Get available columns for dropdowns
+        columns = list(values.keys())
+        dropdown_options = [{'label': col, 'value': col} for col in columns]
+        
+        # Initialize or update longterm_data
+        if not longterm_data:
+            longterm_data = []
+        longterm_data.append(values)
+        
+        # Set default values for dropdowns if they're not already set
+        if current_x is None or current_y is None:
+            default_x = columns[0] if columns else None
+            default_y = columns[1] if len(columns) > 1 else columns[0]
+        else:
+            default_x = current_x
+            default_y = current_y
+            
+        return (
+            values,                  # data_store
+            longterm_data,          # data_longterm_store
+            dropdown_options,        # dropdown_X options
+            dropdown_options,        # dropdown_Y options
+            default_x,              # dropdown_X value
+            default_y               # dropdown_Y value
+        )
+        
     except Exception as e:
         print(f"Error retrieving data: {e}")
-        return [0], [0], n_clicks
+        return [0], [0], [], [], None, None
 
 
 # Callback to add a new graph div when add graph is clicked
