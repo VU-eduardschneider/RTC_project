@@ -41,6 +41,7 @@ app.layout = dbc.Container(
                                 id='input-fields', children=[]
                             ),  # Dynamic input field(s) for each dropdown option
                             html.Button('Connect', id='connector-button', n_clicks=0),
+                            dcc.Input(id='interval_input', type='number', placeholder='update interval (s)'),
                         ],
                         style={
                             'padding': '20px',
@@ -67,6 +68,17 @@ app.layout = dbc.Container(
     fluid=True,
 )
 
+@app.callback(
+    Output(component_id='data_interval', component_property= 'interval'),
+    Input(component_id='interval_input', component_property= 'value')
+)
+
+def update_interval_time(input):
+    try:
+        input = input * 1000
+        return input
+    except:
+        return 1000
 
 # Callback to dynamically change input fields based on source
 # When a connector_type is selected, replace the fields with the appropriate fields
@@ -132,105 +144,7 @@ def update_input_fields(connector_type):
     else:
         return html.Div()
 
-
-# # Callback to retrieve data and update the main content
-# # When the connector_button is clicked, add the new div for adding graphs
-# # And enable the dcc.Interval by disabling the 'disabled' property of data_interval
-# @app.callback(
-#     Output(component_id='main_content', component_property='children'),
-#     Output(component_id='data_interval', component_property='disabled'),
-#     Output(component_id='connection_config', component_property='data'),
-#     Input(component_id='connector-button', component_property='n_clicks'),
-#     State(component_id='connector-dropdown', component_property='value'),
-#     State({'type': 'connection_input', 'index': ALL}, 'id'),
-#     State({'type': 'connection_input', 'index': ALL}, 'value'),
-#     State(component_id='data_store', component_property='data'),
-#     prevent_initial_call=True
-# )
-
-# def retrieve_data_temp(n_clicks, connector_type, connection_id, connection_input, stored_data):
-#     connection = ''
-#     print(connection_input)
-#     if n_clicks > 1:
-#         if connector_type:
-#             connection_data = {connection_id[x]['index']: str(connection_input[x]) for x in range(len(connection_input))}
-#             connection = f'{connector_type.split("_")[0]} - {connection_data}'
-
-#         # Extract column names from stored data
-#         if stored_data:
-#             columns = list(stored_data.keys())
-#         else:
-#             columns = []
-
-#         return html.Div([
-#             html.Div([
-#                 dcc.Dropdown(
-#                     id='dropdown_X',
-#                     options=[{'label': col, 'value': col} for col in columns],
-#                     value=columns[0] if columns else None
-#                 ),
-#                 dcc.Dropdown(
-#                     id='dropdown_Y',
-#                     options=[{'label': col, 'value': col} for col in columns],
-#                     value=columns[0] if columns else None
-#                 ),
-#                 dcc.Dropdown(
-#                     id='dropdown_graph_type',
-#                     options=[
-#                         {'label': 'Line plot', 'value': 'line'},
-#                         {'label': 'Bar chart', 'value': 'bar'},
-#                         {'label': 'Scatter plot', 'value': 'scatter'}
-#                     ],
-#                     value='line'
-#                 ),
-#                 html.Button('Add graph', id='add_graph_button', n_clicks=0),
-#                 html.Hr(),
-#                 html.Div(id="graph_content_area", children=[])
-#             ])
-#         ]), False, connection_input
-#     return dash.no_update, False, connection_input
-
-# # Callback to retrieve and store data each time the interval passes
-# # When the interval is triggered, store new data into the short 'data_store'
-# # And store entire dataset in 'dataLlongterm_store'
-# @app.callback(
-#     Output(component_id='data_store', component_property='data'),
-#     Output(component_id='data_longterm_store', component_property='data'),
-#     Output(component_id='connector-button', component_property='n_clicks'),
-#     Input(component_id='data_interval', component_property='n_intervals'),
-#     State({'type': 'connection_input', 'index': ALL}, 'id'),
-#     State(component_id= 'connection_config', component_property='data'),
-#     State(component_id='connector-button', component_property='n_clicks'),
-#     prevent_initial_call=True
-# )
-
-# def retrieve_data(interval, connector_id, connection_config, n_clicks):
-#     # Test variables for now
-#     print(connection_config)
-#     if n_clicks == 1:
-#         n_clicks += 1
-
-#     else:
-#         n_clicks = dash.no_update
-
-#     if connector_id[0]['index'] == None:
-#         print('Something is going wrong!')
-#         return [0], [0], n_clicks
-
-#     elif connector_id[0]['index'] == 'IP_input':
-#         print(connection_config)
-#         values = confunc.IP_connect(connection_config[0])
-#         return values, values, n_clicks
-
-#     elif connector_id[0]['index'] == 'TCP1_input':
-#         values = confunc.dummy_connect_dict(connection_config)
-#         return values, values, n_clicks
-
-#     elif connector_id[0]['index'] == 'dummy_input':
-#         values = confunc.dummy_connect_dict(connection_config)
-#         return values, values, n_clicks
-
-# First, modify the connector-button callback to only handle UI state
+# Interface handler, generates the interface for adding X and Y-variable options for future graphs
 @app.callback(
     Output(component_id='main_content', component_property='children'),
     Output(component_id='data_interval', component_property='disabled'),
@@ -264,7 +178,7 @@ def setup_interface(n_clicks, connector_type, connection_id, connection_input):
         ]), False, connection_input
     return dash.no_update, True, []
 
-# Combined retrieve_data callback that handles both initial setup and updates
+# Retrieving data 
 @app.callback(
     Output(component_id='data_store', component_property='data'),
     Output(component_id='data_longterm_store', component_property='data'),
