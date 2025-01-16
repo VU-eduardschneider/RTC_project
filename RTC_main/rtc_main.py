@@ -33,7 +33,8 @@ app.layout = dbc.Container(
                                     {'label': 'IP', 'value': 'IP_connector'},
                                     {'label': 'TCP', 'value': 'TCP_connector'},
                                     {'label': 'SQLite', 'value': 'SQLite_connector'},
-                                    {'label': 'dummy connector', 'value': 'dummy_connector'}
+                                    {'label': 'dummy connector', 'value': 'dummy_connector'},
+                                    {'label': 'Wikimedia Views', 'value': 'wikimedia_connector'} 
                                 ],
                                 value='IP_connector',
                             ),  # Default option on launch
@@ -141,6 +142,10 @@ def update_input_fields(connector_type):
                 )
             ]
         )
+    elif connector_type == 'wikimedia_connector':
+        return html.Div([
+            html.P("No configuration needed - will cycle through pageview files automatically")
+        ])
     else:
         return html.Div()
 
