@@ -3,7 +3,6 @@ This folder contains three cases which were created to showcase the functionalit
 
 ## Case 1 - Data over IP
 
+## Case 2 - Streaming PageViews data
 
-##
-
-##
+## Case 3 - Streaming SQLite database data
