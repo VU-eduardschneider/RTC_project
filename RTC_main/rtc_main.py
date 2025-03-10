@@ -18,13 +18,13 @@ app.layout = dbc.Container(
         dcc.Store(id='data_store', storage_type='memory'), # Stores newest row of DataFrame, triggers updating graphs
         dcc.Store(id='data_longterm_store', storage_type='memory'), # Full DataFrame storage for if user wants to save their data
         dcc.Store(id= 'graph_configs_store', data={}), # Stores the configuration of each graph
-        dcc.Store(id= 'connection_config', data=[]), # Stores data about the connection, like IP address or port
+        dcc.Store(id= 'connection_config', data=[]), # Stores data about the connection, like IP address, port
     
         dbc.Row(
             [
                 dbc.Col(
                     html.Div(
-                        [  # Sidebar
+                        [  # Sidebar with connection options
                             html.H2('Sidebar'),
                             html.Hr(),
                             dcc.Dropdown(  # Connector dropdown menu
@@ -33,8 +33,8 @@ app.layout = dbc.Container(
                                     {'label': 'IP', 'value': 'IP_connector'},
                                     {'label': 'TCP', 'value': 'TCP_connector'},
                                     {'label': 'SQLite', 'value': 'SQLite_connector'},
-                                    {'label': 'dummy connector', 'value': 'dummy_connector'},
-                                    {'label': 'Wikimedia Views', 'value': 'wikimedia_connector'} 
+                                    {'label': 'Wikimedia Views', 'value': 'wikimedia_connector'},
+                                    {'label': 'test connector', 'value': 'dummy_connector'}
                                 ],
                                 value='IP_connector',
                             ),  # Default option on launch
@@ -42,7 +42,7 @@ app.layout = dbc.Container(
                                 id='input-fields', children=[]
                             ),  # Dynamic input field(s) for each dropdown option
                             html.Button('Connect', id='connector-button', n_clicks=0),
-                            dcc.Input(id='interval_input', type='number', placeholder='update interval (s)'),
+                            dcc.Input(id='interval_input', type='number', placeholder='update interval (s)'), # Input object for selecting how often the user wants the graphs to update (default 1 second)
                         ],
                         style={
                             'padding': '20px',
@@ -54,7 +54,7 @@ app.layout = dbc.Container(
                 ),
                 dbc.Col(
                     html.Div(
-                        [  # Main content area
+                        [  # Main content area for displaying graphs and creating graphs
                             html.H2('Main content'),
                             html.Hr(),
                             html.Div(id='main_content', children=[]),
@@ -69,11 +69,13 @@ app.layout = dbc.Container(
     fluid=True,
 )
 
+# Callback for triggering the 'data_interval' dcc.Interval 'object. 
+# By default 1 second or when invalid values are given. 
+# Else defined by the 'interval_input' dcc.Input object.
 @app.callback(
     Output(component_id='data_interval', component_property= 'interval'),
     Input(component_id='interval_input', component_property= 'value')
 )
-
 def update_interval_time(input):
     try:
         input = input * 1000
@@ -149,6 +151,7 @@ def update_input_fields(connector_type):
     else:
         return html.Div()
 
+# Callback for creating the interface for creating graphs
 # Interface handler, generates the interface for adding X and Y-variable options for future graphs
 @app.callback(
     Output(component_id='main_content', component_property='children'),
@@ -183,7 +186,8 @@ def setup_interface(n_clicks, connector_type, connection_id, connection_input):
         ]), False, connection_input
     return dash.no_update, True, []
 
-# Retrieving data 
+# Callback for retrieving data
+# Also updates dropdown options so that new X and Y-variables are detected
 @app.callback(
     Output(component_id='data_store', component_property='data'),
     Output(component_id='data_longterm_store', component_property='data'),
